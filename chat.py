@@ -60,7 +60,7 @@ class MeidobotChatClient:
 
         logger.info(f"Response from OpenAI API: {response}")
 
-        message = response["choices"][0]["message"]
+        message = response["choices"][0]["message"]  # type: ignore
 
         self.save_message_to_history(message)
 
