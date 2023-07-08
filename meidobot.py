@@ -11,7 +11,7 @@ logger = logging.getLogger("Meidobot")
 # Show info messages in console
 logging.basicConfig(level=logging.INFO)
 
-chat_client = MeidobotChatClient(os.environ.get("OPENAI_SECRET_KEY"))
+chat_client = MeidobotChatClient(os.environ.get("OPENAI_API_KEY"))
 trigger_words = ["meidobot", "meido", "bot", "botti"]
 
 
