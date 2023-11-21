@@ -71,8 +71,7 @@ class MeidobotChatClient:
         logger.info("Requesting response to message: %s", message)
 
         completion = self.client.chat.completions.create(
-            model="gpt-4",
-            messages=initial_messages + self._message_history,
+            model="gpt-4", messages=initial_messages + self._message_history, timeout=15
         )
 
         logger.info("Response from OpenAI API: %s", completion)
