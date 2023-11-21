@@ -29,7 +29,8 @@ class MeidobotClient(discord.Client):
         return any(word in string.lower() for word in trigger_words)
 
     async def on_ready(self):
-        logger.info("Logged on as {0}!".format(self.user))
+        """Handle the bot being ready to receive messages."""
+        logger.info(f"Logged on as {self.user}!")
 
     async def on_message(self, message: discord.Message):
         """Handle messages sent to the bot.
@@ -44,11 +45,13 @@ class MeidobotClient(discord.Client):
         if message.author.bot:
             return
 
-        # check if the message mentions the bot, contains a trigger word or is a reply to a message sent by the bot
+        # check if the message mentions the bot, contains a trigger word or
+        # is a reply to a message sent by the bot
         if any(
             [
                 self.user in message.mentions,
-                message.reference and message.reference.resolved.author == self.user,  # type: ignore
+                message.reference
+                and message.reference.resolved.author == self.user,  # type: ignore
                 self._trigger_word_in_str(message.content),
             ]
         ):
