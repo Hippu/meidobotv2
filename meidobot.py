@@ -17,6 +17,8 @@ trigger_words = ["meidobot", "meido", "bot", "botti"]
 
 
 class MeidobotClient(discord.Client):
+    """Discord client for Meidobot."""
+
     def _trigger_word_in_str(self, string: str) -> bool:
         """Check if the message contains a trigger word.
 
@@ -30,7 +32,7 @@ class MeidobotClient(discord.Client):
 
     async def on_ready(self):
         """Handle the bot being ready to receive messages."""
-        logger.info(f"Logged on as {self.user}!")
+        logger.info("Logged on as %s!", self.user)
 
     async def on_message(self, message: discord.Message):
         """Handle messages sent to the bot.
@@ -45,6 +47,8 @@ class MeidobotClient(discord.Client):
         if message.author.bot:
             return
 
+        logger.info("Message %s", message)
+
         # check if the message mentions the bot, contains a trigger word or
         # is a reply to a message sent by the bot
         if any(
@@ -53,18 +57,19 @@ class MeidobotClient(discord.Client):
                 message.reference
                 and message.reference.resolved.author == self.user,  # type: ignore
                 self._trigger_word_in_str(message.content),
-            ]
+            ],
         ):
-            logger.info("Message from {0.author}: {0.content}".format(message))
+            logger.info("Message from %s: %s", message.author, message.content)
 
             # remove the mention from the message
             cleaned_message = re.sub(r"<[^>]*>", "", message.content)
 
-            response = chat_client.get_response_to_message(
-                f"{message.author.name}#{message.author.discriminator}: {cleaned_message}"
-            )
-            await message.channel.send(response)
-            logger.info(f"Responded with: {response}")
+            async with message.channel.typing():
+                response = chat_client.get_response_to_message(
+                    f"{message.author.name}#{message.author.discriminator}: {cleaned_message}"
+                )
+                await message.channel.send(response)
+                logger.info("Responded with: %s", response)
 
 
 if __name__ == "__main__":

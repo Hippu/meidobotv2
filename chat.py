@@ -1,6 +1,7 @@
+from typing import Dict, List
 import logging
 
-import openai
+from openai import OpenAI
 
 initial_messages = [
     {
@@ -32,7 +33,7 @@ initial_messages = [
         "role": "assistant",
         "content": "En tiedä mistä puhut :grinning: :grinning: :grinning: :grinning: ",
     },
-]
+]  # type: List[Dict[str, str]]
 
 logger = logging.getLogger("meidobot.chat")
 
@@ -45,17 +46,17 @@ class MeidobotChatClient:
         Args:
             secret_key (str): The secret key for accessing the OpenAI API.
         """
-        self._message_history = []
-        openai.api_key = secret_key
+        self._message_history = []  # type: List[Dict[str, str]]
+        self.client = OpenAI(api_key=secret_key)
 
-    def save_message_to_history(self, message):
+    def save_message_to_history(self, message: Dict[str, str]):
         """Save a message to the message history."""
         self._message_history.append(message)
         # keep the message history to 20 messages
         if len(self._message_history) > 20:
             self._message_history.pop(0)
 
-    def get_response_to_message(self, message):
+    def get_response_to_message(self, message) -> str:
         """
         Get a response to a given message.
 
@@ -67,17 +68,20 @@ class MeidobotChatClient:
         """
         self.save_message_to_history({"role": "user", "content": message})
 
-        logger.info(f"Requesting response to message: {message}")
+        logger.info("Requesting response to message: %s", message)
 
-        response = openai.ChatCompletion.create(
+        completion = self.client.chat.completions.create(
             model="gpt-4",
             messages=initial_messages + self._message_history,
         )
 
-        logger.info(f"Response from OpenAI API: {response}")
+        logger.info("Response from OpenAI API: %s", completion)
 
-        message = response["choices"][0]["message"]  # type: ignore
+        message = completion.choices[0].message
 
-        self.save_message_to_history(message)
+        if message.content is None:
+            raise ValueError("OpenAI API returned None for message content.")
 
-        return message["content"]
+        self.save_message_to_history({"role": "assistant", "content": message.content})
+
+        return message.content
