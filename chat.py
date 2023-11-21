@@ -1,5 +1,6 @@
-import openai
 import logging
+
+import openai
 
 initial_messages = [
     {
@@ -38,6 +39,12 @@ logger = logging.getLogger("meidobot.chat")
 
 class MeidobotChatClient:
     def __init__(self, secret_key):
+        """
+        Initialize the MeidobotChatClient.
+
+        Args:
+            secret_key (str): The secret key for accessing the OpenAI API.
+        """
         self._message_history = []
         openai.api_key = secret_key
 
@@ -49,12 +56,21 @@ class MeidobotChatClient:
             self._message_history.pop(0)
 
     def get_response_to_message(self, message):
+        """
+        Get a response to a given message.
+
+        Args:
+            message (str): The message to get a response to.
+
+        Returns:
+            str: The response message.
+        """
         self.save_message_to_history({"role": "user", "content": message})
 
         logger.info(f"Requesting response to message: {message}")
 
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4",
             messages=initial_messages + self._message_history,
         )
 

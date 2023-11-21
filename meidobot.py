@@ -1,7 +1,8 @@
-import re
-import discord
-import os
 import logging
+import os
+import re
+
+import discord
 
 from chat import MeidobotChatClient
 

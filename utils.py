@@ -23,6 +23,8 @@ def print_available_models():
         print("Models not available. The API returned None in 'data'.")
         return
 
+    model_data = sorted(model_data, key=lambda x: x.get("id"))
+
     for model in model_data:
         print(model.get("id"))
 
