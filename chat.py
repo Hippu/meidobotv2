@@ -1,5 +1,7 @@
-from typing import Dict, List
+from typing import Dict, List, Sequence
+from itertools import chain
 import logging
+
 
 from openai import OpenAI
 
@@ -33,7 +35,7 @@ initial_messages = [
         "role": "assistant",
         "content": "En tiedä mistä puhut :grinning: :grinning: :grinning: :grinning: ",
     },
-]  # type: List[Dict[str, str]]
+]  # type: Sequence[Dict[str, str]]
 
 logger = logging.getLogger("meidobot.chat")
 
@@ -46,7 +48,7 @@ class MeidobotChatClient:
         Args:
             secret_key (str): The secret key for accessing the OpenAI API.
         """
-        self._message_history = []  # type: List[Dict[str, str]]
+        self._message_history = []  # type: Sequence[Dict[str, str]]
         self.client = OpenAI(api_key=secret_key)
 
     def save_message_to_history(self, message: Dict[str, str]):
@@ -56,7 +58,7 @@ class MeidobotChatClient:
         if len(self._message_history) > 20:
             self._message_history.pop(0)
 
-    def get_response_to_message(self, message) -> str:
+    async def get_response_to_message(self, message) -> str:
         """
         Get a response to a given message.
 
@@ -71,7 +73,9 @@ class MeidobotChatClient:
         logger.info("Requesting response to message: %s", message)
 
         completion = self.client.chat.completions.create(
-            model="gpt-4", messages=initial_messages + self._message_history, timeout=15
+            model="gpt-4",
+            messages=initial_messages + self._message_history,
+            timeout=120,
         )
 
         logger.info("Response from OpenAI API: %s", completion)
