@@ -65,7 +65,7 @@ class MeidobotClient(discord.Client):
             cleaned_message = re.sub(r"<[^>]*>", "", message.content)
 
             async with message.channel.typing():
-                response = chat_client.get_response_to_message(
+                response = await chat_client.get_response_to_message(
                     f"{message.author.name}#{message.author.discriminator}: {cleaned_message}"
                 )
                 await message.channel.send(response)
