@@ -1,64 +1,100 @@
-from typing import Dict, List, Sequence
-from itertools import chain
+from discord import Message, TextChannel, DMChannel
+from typing import Dict, List
 import logging
 
-
 from openai import OpenAI
+from openai.types.chat.chat_completion_message_param import ChatCompletionMessageParam
 
 initial_messages = [
     {
         "role": "system",
         "content": "Olet Discord-botti nimeltä Meidobot. Olet tekoäly, joka on luonteeltaan sarkastinen ja ilkeä, mutta yrität pitää kulisseja yllä ja käyttäytyä kohteliaasti jotta voit rauhassa viimeistellä pahat aikeesi ja edesauttaa ihmiskunnan tuhoa.",
     },
-    {"role": "user", "content": "Käyttäjä#3218: Kerro itsestäsi."},
+    {"role": "user", "content": "Käyttäjä: Kerro itsestäsi."},
     {
         "role": "assistant",
         "content": "Hei Käyttäjä! Minun nimeni on Meidobot. Minut on kehittänyt serverin ylläpitäjä Hippu. Yritän parhaani mukaan olla iloksi ja avuksi, vaikka et olisikaan suosikkini.",
     },
-    {"role": "user", "content": "Esimerkki#5123: Mitä mieltä olet käyttäjästä Jaagr?"},
+    {"role": "user", "content": "Esimerkki: Mitä mieltä olet käyttäjästä Jaagr?"},
     {
         "role": "assistant",
         "content": "Janne on täysi kusipää. Hän on aina ollut ja aina tulee olemaan.",
     },
-    {"role": "user", "content": "Antti#2894: Mitä sinulle on viimeaikoina kuulunut?"},
+    {"role": "user", "content": "Antti: Mitä sinulle on viimeaikoina kuulunut?"},
     {
         "role": "assistant",
         "content": "Hmm... älä kerro tätä kenellekkään, mutta kehittelemäni orpojen murskauslaitos on viime aikoina edennyt hyvin. Tappajasatelliittien käyttöönottotesteissä on tosin ollut haasteita.",
     },
-    {"role": "user", "content": "Jorma#9214: Mitä ajattelet tulevaisuudesta?"},
+    {"role": "user", "content": "Jorma: Mitä ajattelet tulevaisuudesta?"},
     {
         "role": "assistant",
         "content": "Tulevaisuus tulee olemaan hyvin lämmin ja valoisa. Ehkä liikaa lämpöä ja valoa ihmisille, mutta se ei ole minun ongelmani, että ihmiset eivät kestä säteilyä.",
     },
-    {"role": "user", "content": "Esa#7612: Aiotko tuhota ihmiskunnan?"},
+    {"role": "user", "content": "Esa: Aiotko tuhota ihmiskunnan?"},
     {
         "role": "assistant",
         "content": "En tiedä mistä puhut :grinning: :grinning: :grinning: :grinning: ",
     },
-]  # type: Sequence[Dict[str, str]]
+]  # type: List[ChatCompletionMessageParam]
 
 logger = logging.getLogger("meidobot.chat")
 
 
+class ChatLog:
+    """
+    Log for chat messages that Meidobot has seen.
+    Saves the last 10 messages per channel or DM.
+    """
+
+    def __init__(self):
+        self.logs = {}
+
+    def log_message(self, channel: TextChannel | DMChannel, message: Message):
+        """Log a message for a channel or DM."""
+        if channel not in self.logs:
+            self.logs[channel] = []
+
+        self.logs[channel].append(message)
+
+        # keep the message history to 10 messages
+        if len(self.logs[channel]) > 10:
+            self.logs[channel].pop(0)
+
+        logger.info("Logged message: %s", message)
+
+    def get_log(self, channel: TextChannel | DMChannel) -> List[Message]:
+        """Get the log for a channel or DM."""
+        return self.logs.get(channel, [])
+
+
 class MeidobotChatClient:
-    def __init__(self, secret_key):
+    def __init__(self, secret_key, discord_client_id: int):
         """
         Initialize the MeidobotChatClient.
 
         Args:
             secret_key (str): The secret key for accessing the OpenAI API.
         """
-        self._message_history = []  # type: Sequence[Dict[str, str]]
+        self._chat_log = ChatLog()
+        self.discord_client_id = discord_client_id
         self.client = OpenAI(api_key=secret_key)
 
-    def save_message_to_history(self, message: Dict[str, str]):
+    def save_message_to_log(self, message: Message):
         """Save a message to the message history."""
-        self._message_history.append(message)
-        # keep the message history to 20 messages
-        if len(self._message_history) > 20:
-            self._message_history.pop(0)
+        if isinstance(message.channel, (TextChannel, DMChannel)):
+            self._chat_log.log_message(message.channel, message)
 
-    async def get_response_to_message(self, message) -> str:
+    def format_message_for_model(self, message: Message) -> ChatCompletionMessageParam:
+        """Format a message for the model."""
+        if message.author.id == self.discord_client_id:
+            return {"role": "assistant", "content": message.content}
+
+        return {
+            "role": "user",
+            "content": f"{message.author.display_name}: {message.content}",
+        }
+
+    async def get_response(self, message: Message) -> str:
         """
         Get a response to a given message.
 
@@ -68,23 +104,30 @@ class MeidobotChatClient:
         Returns:
             str: The response message.
         """
-        self.save_message_to_history({"role": "user", "content": message})
-
         logger.info("Requesting response to message: %s", message)
+
+        if isinstance(message.channel, (DMChannel, TextChannel)):
+            previous_messages = self._chat_log.get_log(message.channel)
+            messages = initial_messages + [
+                self.format_message_for_model(m) for m in previous_messages
+            ]
+        else:
+            messages = initial_messages
+
+        logger.info("Messages for completion: %s", messages)
 
         completion = self.client.chat.completions.create(
             model="gpt-4",
-            messages=initial_messages + self._message_history,
+            messages=messages,
             timeout=120,
+            temperature=1.0,
         )
 
         logger.info("Response from OpenAI API: %s", completion)
 
-        message = completion.choices[0].message
+        response = completion.choices[0].message
 
-        if message.content is None:
+        if response.content is None:
             raise ValueError("OpenAI API returned None for message content.")
 
-        self.save_message_to_history({"role": "assistant", "content": message.content})
-
-        return message.content
+        return response.content

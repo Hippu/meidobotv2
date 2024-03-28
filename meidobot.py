@@ -12,12 +12,15 @@ logger = logging.getLogger("Meidobot")
 # Show info messages in console
 logging.basicConfig(level=logging.INFO)
 
-chat_client = MeidobotChatClient(os.environ.get("OPENAI_API_KEY"))
 trigger_words = ["meidobot", "meido", "bot", "botti"]
 
 
 class MeidobotClient(discord.Client):
     """Discord client for Meidobot."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._client = None
 
     def _trigger_word_in_str(self, string: str) -> bool:
         """Check if the message contains a trigger word.
@@ -32,6 +35,13 @@ class MeidobotClient(discord.Client):
 
     async def on_ready(self):
         """Handle the bot being ready to receive messages."""
+        if self.user is None:
+            raise ValueError("User not found")
+
+        self._client = MeidobotChatClient(
+            os.environ.get("OPENAI_API_KEY"), self.user.id
+        )
+
         logger.info("Logged on as %s!", self.user)
 
     async def on_message(self, message: discord.Message):
@@ -43,11 +53,16 @@ class MeidobotClient(discord.Client):
         Returns:
             None
         """
-        # don't respond to any bots
+        # don't respond to or log any bots
         if message.author.bot:
             return
 
+        if self._client is None:
+            logger.error("MeidobotChatClient not initialized")
+            return
+
         logger.info("Message %s", message)
+        self._client.save_message_to_log(message)
 
         # check if the message mentions the bot, contains a trigger word or
         # is a reply to a message sent by the bot
@@ -57,19 +72,17 @@ class MeidobotClient(discord.Client):
                 message.reference
                 and message.reference.resolved.author == self.user,  # type: ignore
                 self._trigger_word_in_str(message.content),
+                isinstance(message.channel, discord.DMChannel),
             ],
         ):
             logger.info("Message from %s: %s", message.author, message.content)
 
-            # remove the mention from the message
-            cleaned_message = re.sub(r"<[^>]*>", "", message.content)
-
             async with message.channel.typing():
-                response = await chat_client.get_response_to_message(
-                    f"{message.author.name}#{message.author.discriminator}: {cleaned_message}"
-                )
-                await message.channel.send(response)
-                logger.info("Responded with: %s", response)
+                response = await self._client.get_response(message)
+                sent_message = await message.channel.send(response)
+
+            self._client.save_message_to_log(sent_message)
+            logger.info("Responded with: %s", sent_message)
 
 
 if __name__ == "__main__":

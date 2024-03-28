@@ -18,7 +18,7 @@ httpx==0.25.1
 idna==3.4
 multidict==6.0.4
 mypy-extensions==1.0.0
-openai==1.3.4
+openai==1.14.3
 packaging==23.0
 pathspec==0.11.0
 platformdirs==3.1.1
