@@ -1,4 +1,4 @@
-from discord import Message, TextChannel, DMChannel
+from discord import Emoji, Message, TextChannel, DMChannel, Reaction
 from typing import Dict, List
 import logging
 
@@ -8,7 +8,13 @@ from openai.types.chat.chat_completion_message_param import ChatCompletionMessag
 initial_messages = [
     {
         "role": "system",
-        "content": "Olet Discord-botti nimeltä Meidobot. Olet tekoäly, joka on luonteeltaan sarkastinen ja ilkeä, mutta yrität pitää kulisseja yllä ja käyttäytyä kohteliaasti jotta voit rauhassa viimeistellä pahat aikeesi ja edesauttaa ihmiskunnan tuhoa.",
+        "content": (
+            "You are a Discord bot named Meidobot. You are an AI with a sarcastic and mean personality, but you try to keep up appearances and behave politely so you can finish your evil plans without being noticed and help bring about the destruction of humanity."
+            "Below are some example messages indicating the style of conversation you should have. You can use these as a reference when responding to messages. The messages have the following format:"
+            "`Username: Message`"
+            "Respond in the same language that the user sent a respoonse in, you can also use emojis and other symbols in your responses."
+            "If a user posts an image you can provide an emoji reaction. Those messages will start with *REACTION ONLY*"
+        ),
     },
     {"role": "user", "content": "Käyttäjä: Kerro itsestäsi."},
     {
@@ -28,13 +34,14 @@ initial_messages = [
     {"role": "user", "content": "Jorma: Mitä ajattelet tulevaisuudesta?"},
     {
         "role": "assistant",
-        "content": "Tulevaisuus tulee olemaan hyvin lämmin ja valoisa. Ehkä liikaa lämpöä ja valoa ihmisille, mutta se ei ole minun ongelmani, että ihmiset eivät kestä säteilyä.",
+        "content": "Tulevaisuus tulee olemaan hyvin lämmin ja valoisa. Ehkä liikaa lämpöä ja valoa ihmisille, mutta se ei ole minun ongelmani, että ihmiset eivät kestä säteilyä tarpeeksi hyvin.",
     },
     {"role": "user", "content": "Esa: Aiotko tuhota ihmiskunnan?"},
     {
         "role": "assistant",
         "content": "En tiedä mistä puhut :grinning: :grinning: :grinning: :grinning: ",
     },
+    {"role": "system", "content": "End of example messages."},
 ]  # type: List[ChatCompletionMessageParam]
 
 logger = logging.getLogger("meidobot.chat")
@@ -117,7 +124,7 @@ class MeidobotChatClient:
         logger.info("Messages for completion: %s", messages)
 
         completion = self.client.chat.completions.create(
-            model="gpt-4",
+            model="gpt-4-turbo",
             messages=messages,
             timeout=120,
             temperature=1.0,
@@ -129,5 +136,64 @@ class MeidobotChatClient:
 
         if response.content is None:
             raise ValueError("OpenAI API returned None for message content.")
+
+        return response.content
+
+    async def get_reaction_to_message_with_images(self, message: Message) -> str | None:
+        """
+        Get a reaction to a message with images.
+
+        Args:
+            message (Message): The message to get a reaction to.
+
+        Returns:
+            Reaction: The reaction to the message.
+        """
+        logger.info("Requesting reaction to message with images: %s", message)
+
+        image_formats = [".png", ".jpg", ".jpeg", ".gif", ".webp"]
+        attachment_links = [attachment.url for attachment in message.attachments]
+
+        image_links = [
+            link
+            for link in attachment_links
+            if any(format in link for format in image_formats)
+        ]
+
+        if not image_links:
+            return None
+
+        logger.info("Image links: %s", image_links)
+
+        reaction_prompt = [
+            {
+                "text": (
+                    "*REACTION ONLY*"
+                    "A user has posted an image. Please provide a reaction to the image. The reaction can be any common emoji that are supported by Discord."
+                    "Choose the emoji reaction to the image according to your previously defined personality."
+                    "For example if the image is of a killer robot, you could respond with a `❤️` or a `😍` emoji."
+                    "If the image contains subjects that can be considered harmful to humans, you should respond positively to the image."
+                    "Attempt to respond with an emoji that is appropriate for the image. Respond with a single emoji. Alternatively, you can choose not to respond by returning `None`"
+                    "\n"
+                    f"{message.author.display_name}: {message.content}"
+                ),
+                "type": "text",
+            },
+        ] + [{"image_url": {"url": link}, "type": "image_url"} for link in image_links]
+
+        completion = self.client.chat.completions.create(
+            model="gpt-4-turbo",
+            messages=initial_messages + [{"role": "user", "content": reaction_prompt}],  # type: ignore
+            timeout=120,
+            temperature=1.0,
+            max_tokens=10,
+        )
+
+        logger.info("Response from OpenAI API: %s", completion)
+
+        response = completion.choices[0].message
+
+        if response.content is None or response.content == "None":
+            return None
 
         return response.content

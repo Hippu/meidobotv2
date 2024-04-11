@@ -72,7 +72,8 @@ class MeidobotClient(discord.Client):
                 message.reference
                 and message.reference.resolved.author == self.user,  # type: ignore
                 self._trigger_word_in_str(message.content),
-                isinstance(message.channel, discord.DMChannel),
+                isinstance(message.channel, discord.DMChannel)
+                and message.content != "",
             ],
         ):
             logger.info("Message from %s: %s", message.author, message.content)
@@ -83,6 +84,12 @@ class MeidobotClient(discord.Client):
 
             self._client.save_message_to_log(sent_message)
             logger.info("Responded with: %s", sent_message)
+        # React with an emoji if the message contains an image
+        if message.attachments:
+            response = await self._client.get_reaction_to_message_with_images(message)
+            logger.info("Reaction to message with images: %s", response)
+            if response is not None:
+                await message.add_reaction(response)
 
 
 if __name__ == "__main__":
