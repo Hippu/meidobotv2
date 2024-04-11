@@ -93,7 +93,9 @@ class MeidobotClient(discord.Client):
 
 
 if __name__ == "__main__":
-    client = MeidobotClient(intents=discord.Intents.default())
+    intents = discord.Intents.default()
+    intents.message_content = True  # Enabled so we can react to images in messages
+    client = MeidobotClient(intents=intents)
 
     if discord_token is None:
         raise ValueError("DISCORD_TOKEN environment variable not set")
