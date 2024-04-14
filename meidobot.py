@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import re
@@ -84,10 +85,19 @@ class MeidobotClient(discord.Client):
 
             self._client.save_message_to_log(sent_message)
             logger.info("Responded with: %s", sent_message)
+
+        await asyncio.sleep(1)
+
         # React with an emoji if the message contains an image
         if message.attachments:
             response = await self._client.get_reaction_to_message_with_images(message)
             logger.info("Reaction to message with images: %s", response)
+            if response is not None:
+                await message.add_reaction(response)
+        # React with an emoji if the message contains embeds
+        if message.embeds:
+            response = await self._client.get_reaction_to_message_with_embeds(message)
+            logger.info("Reaction to message with embeds: %s", response)
             if response is not None:
                 await message.add_reaction(response)
 

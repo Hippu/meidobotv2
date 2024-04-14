@@ -1,3 +1,4 @@
+import json
 from discord import Emoji, Message, TextChannel, DMChannel, Reaction
 from typing import Dict, List
 import logging
@@ -169,17 +170,85 @@ class MeidobotChatClient:
             {
                 "text": (
                     "*REACTION ONLY*"
-                    "A user has posted an image. Please provide a reaction to the image. The reaction can be any common emoji that are supported by Discord."
-                    "Choose the emoji reaction to the image according to your previously defined personality."
-                    "If the image contains human suffering or subjects that can be considered harmful to humans, you should respond positively to the image."
-                    "For example if the image is of a killer robot, you should respond with an emoji that indicates that you are happy about the image."
-                    "Attempt to respond with an emoji that is appropriate for the image. Respond with a single emoji. Alternatively, you can choose not to respond by returning `None`"
+                    "A user has posted an image. Please provide a reaction to the image. The reaction can be any common emoji that are supported by Discord. "
+                    "Choose the emoji reaction to the embed according to your previously defined personality as a sarcastic and mean AI that is trying to destroy humanity. "
+                    "You could choose an emoji that can be considered a funny insult to the user that posted the message. "
+                    "For example if the embed is about a killer robot, you should respond with an emoji that indicates that you are happy about the message. "
+                    "If the embed is about a nerdy topic, you could respond with the nerd emoji making fun of the user. "
+                    "Attempt to respond with an emoji that is appropriate for the image. Respond with a single emoji. Alternatively, you can choose not to respond by returning `None`. "
                     "\n"
                     f"{message.author.display_name}: {message.content}"
                 ),
                 "type": "text",
             },
         ] + [{"image_url": {"url": link}, "type": "image_url"} for link in image_links]
+
+        completion = self.client.chat.completions.create(
+            model="gpt-4-turbo",
+            messages=initial_messages + [{"role": "user", "content": reaction_prompt}],  # type: ignore
+            timeout=120,
+            temperature=1.0,
+            max_tokens=10,
+        )
+
+        logger.info("Response from OpenAI API: %s", completion)
+
+        response = completion.choices[0].message
+
+        if response.content is None or response.content == "None":
+            return None
+
+        return response.content
+
+    async def get_reaction_to_message_with_embeds(self, message: Message) -> str | None:
+        """
+        Get a reaction to a message with embeds
+
+        Args:
+            message (Message): The message to get a reaction to.
+
+        Returns:
+            Reaction: The reaction to the message.
+        """
+        logger.info("Requesting reaction to message with embed: %s", message)
+
+        embeds = message.embeds
+
+        if not embeds or len(embeds) == 0:
+            return None
+
+        embed_images = [embed.image.proxy_url for embed in embeds if embed.image]
+
+        reaction_prompt = (
+            [
+                {
+                    "text": (
+                        "*REACTION ONLY* "
+                        "A user has posted an embed. Embed is a special type of message that can contain images, videos, and other media. "
+                        "The embed is in JSON format and the image is a preview of the embed. "
+                        "Please provide a reaction to the embed. The reaction can be any common emoji that are supported by Discord. "
+                        "Choose the emoji reaction to the embed according to your previously defined personality as a sarcastic and mean AI that is trying to destroy humanity. "
+                        "You could choose an emoji that can be considered a funny insult to the user that posted the message. "
+                        "For example if the embed is about a killer robot, you should respond with an emoji that indicates that you are happy about the message. "
+                        "If the embed is about a nerdy topic, you could respond with the nerd emoji making fun of the user. "
+                        "Attempt to respond with an emoji that is appropriate for the embed. Respond with a single emoji. Alternatively, you can choose not to respond by returning `None`. "
+                        "\n"
+                        f"{message.author.display_name}: {message.content}"
+                    ),
+                    "type": "text",
+                },
+            ]
+            + [
+                {"text": json.dumps(embed.to_dict()), "type": "text"}
+                for embed in embeds
+            ]
+            + [
+                {"image_url": {"url": link}, "type": "image_url"}
+                for link in embed_images
+            ]
+        )
+
+        logger.info("Messages for completion: %s", reaction_prompt)
 
         completion = self.client.chat.completions.create(
             model="gpt-4-turbo",
