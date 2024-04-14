@@ -217,7 +217,9 @@ class MeidobotChatClient:
         if not embeds or len(embeds) == 0:
             return None
 
-        embed_images = [embed.image.proxy_url for embed in embeds if embed.image]
+        embed_images = [embed.image.proxy_url for embed in embeds if embed.image] + [
+            embed.thumbnail.proxy_url for embed in embeds if embed.thumbnail
+        ]
 
         reaction_prompt = (
             [
