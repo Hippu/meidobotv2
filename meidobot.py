@@ -86,7 +86,8 @@ class MeidobotClient(discord.Client):
             self._client.save_message_to_log(sent_message)
             logger.info("Responded with: %s", sent_message)
 
-        await asyncio.sleep(1)
+        # Sleep for a bit so that the Gateway api has time to process the message
+        await asyncio.sleep(4)
 
         # React with an emoji if the message contains an image
         if message.attachments:
