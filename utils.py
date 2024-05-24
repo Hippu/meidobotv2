@@ -1,32 +1,21 @@
 """
 Module for utility functions such as checking available models, etc.
 """
+
 import argparse
 import openai
 
 
 def print_available_models():
     """Print all available models."""
-    models = openai.Model.list()
+    models = openai.models.list()
     print("Available models:")
     if models is None:
         print("Models not available. The API returned None.")
         return
 
-    if not isinstance(models, dict) or "data" not in models:
-        print("Models not available. No 'data' in the API response.")
-        return
-
-    model_data = models.get("data")
-
-    if model_data is None:
-        print("Models not available. The API returned None in 'data'.")
-        return
-
-    model_data = sorted(model_data, key=lambda x: x.get("id"))
-
-    for model in model_data:
-        print(model.get("id"))
+    for model in models:
+        print(model.id)
 
 
 def main():

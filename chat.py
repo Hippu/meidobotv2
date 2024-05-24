@@ -76,6 +76,8 @@ class ChatLog:
 
 
 class MeidobotChatClient:
+    model = "gpt-4o"
+
     def __init__(self, secret_key, discord_client_id: int):
         """
         Initialize the MeidobotChatClient.
@@ -125,7 +127,7 @@ class MeidobotChatClient:
         logger.info("Messages for completion: %s", messages)
 
         completion = self.client.chat.completions.create(
-            model="gpt-4-turbo",
+            model=MeidobotChatClient.model,
             messages=messages,
             timeout=120,
             temperature=1.0,
@@ -184,7 +186,7 @@ class MeidobotChatClient:
         ] + [{"image_url": {"url": link}, "type": "image_url"} for link in image_links]
 
         completion = self.client.chat.completions.create(
-            model="gpt-4-turbo",
+            model=MeidobotChatClient.model,
             messages=initial_messages + [{"role": "user", "content": reaction_prompt}],  # type: ignore
             timeout=120,
             temperature=1.0,
@@ -253,7 +255,7 @@ class MeidobotChatClient:
         logger.info("Messages for completion: %s", reaction_prompt)
 
         completion = self.client.chat.completions.create(
-            model="gpt-4-turbo",
+            model=MeidobotChatClient.model,
             messages=initial_messages + [{"role": "user", "content": reaction_prompt}],  # type: ignore
             timeout=120,
             temperature=1.0,
