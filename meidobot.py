@@ -3,7 +3,7 @@ import logging
 import os
 import re
 
-import discord
+import nextcord
 
 from chat import MeidobotChatClient
 
@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.INFO)
 trigger_words = ["meidobot", "meido", "bot", "botti"]
 
 
-class MeidobotClient(discord.Client):
+class MeidobotClient(nextcord.Client):
     """Discord client for Meidobot."""
 
     def __init__(self, *args, **kwargs):
@@ -27,7 +27,7 @@ class MeidobotClient(discord.Client):
         """Check if the message contains a trigger word.
 
         Args:
-            message (discord.Message): The message to check.
+            message (nextcord.Message): The message to check.
 
         Returns:
             bool: True if the message contains a trigger word, False otherwise.
@@ -45,11 +45,11 @@ class MeidobotClient(discord.Client):
 
         logger.info("Logged on as %s!", self.user)
 
-    async def on_message(self, message: discord.Message):
+    async def on_message(self, message: nextcord.Message):
         """Handle messages sent to the bot.
 
         Args:
-            message (discord.Message): The message sent to the bot.
+            message (nextcord.Message): The message sent to the bot.
 
         Returns:
             None
@@ -73,7 +73,7 @@ class MeidobotClient(discord.Client):
                 message.reference
                 and message.reference.resolved.author == self.user,  # type: ignore
                 self._trigger_word_in_str(message.content),
-                isinstance(message.channel, discord.DMChannel)
+                isinstance(message.channel, nextcord.DMChannel)
                 and message.content != "",
             ],
         ):
@@ -104,7 +104,7 @@ class MeidobotClient(discord.Client):
 
 
 if __name__ == "__main__":
-    intents = discord.Intents.default()
+    intents = nextcord.Intents.default()
     intents.message_content = True  # Enabled so we can react to images in messages
     client = MeidobotClient(intents=intents)
 

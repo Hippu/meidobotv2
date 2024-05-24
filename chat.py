@@ -1,6 +1,6 @@
 from copy import copy
 import json
-from discord import Emoji, Message, TextChannel, DMChannel, Reaction
+from nextcord import Message, TextChannel, DMChannel
 from typing import Dict, List
 import logging
 
