@@ -1,3 +1,4 @@
+from copy import copy
 import json
 from discord import Emoji, Message, TextChannel, DMChannel, Reaction
 from typing import Dict, List
@@ -94,14 +95,24 @@ class MeidobotChatClient:
         if isinstance(message.channel, (TextChannel, DMChannel)):
             self._chat_log.log_message(message.channel, message)
 
+    def get_content_from_message(self, message: Message) -> str:
+        """Get the content from a message. Mention IDs are replaced with display names."""
+        content = copy(message.content)
+        for mention in message.mentions:
+            content = content.replace(f"<@{mention.id}>", f"@{mention.display_name}")
+
+        return content
+
     def format_message_for_model(self, message: Message) -> ChatCompletionMessageParam:
         """Format a message for the model."""
+        content = self.get_content_from_message(message)
+
         if message.author.id == self.discord_client_id:
-            return {"role": "assistant", "content": message.content}
+            return {"role": "assistant", "content": content}
 
         return {
             "role": "user",
-            "content": f"{message.author.display_name}: {message.content}",
+            "content": f"{message.author.display_name}: {content}",
         }
 
     async def get_response(self, message: Message) -> str:
@@ -179,7 +190,7 @@ class MeidobotChatClient:
                     "If the embed is about a nerdy topic, you could respond with the nerd emoji making fun of the user. "
                     "Attempt to respond with an emoji that is appropriate for the image. Respond with a single emoji. Alternatively, you can choose not to respond by returning `None`. "
                     "\n"
-                    f"{message.author.display_name}: {message.content}"
+                    f"{message.author.display_name}: {self.get_content_from_message(message)}"
                 ),
                 "type": "text",
             },
@@ -237,7 +248,7 @@ class MeidobotChatClient:
                         "If the embed is about a nerdy topic, you could respond with the nerd emoji making fun of the user. "
                         "Attempt to respond with an emoji that is appropriate for the embed. Respond with a single emoji. Alternatively, you can choose not to respond by returning `None`. "
                         "\n"
-                        f"{message.author.display_name}: {message.content}"
+                        f"{message.author.display_name}: {self.get_content_from_message(message)}"
                     ),
                     "type": "text",
                 },
