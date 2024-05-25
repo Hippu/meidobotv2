@@ -304,6 +304,8 @@ class MeidobotChatClient:
         prompt_message = (
             f"Käyttäjä {requester.display_name} on pyytänyt sinua kertomaan hauskan faktan. Kerro hauska fakta, joka liittyy tähän päivämäärään historiassa. "
             f"Nykyinen päivämäärä on {datetime.now(tz=helsinki_timezone).strftime('%Y-%m-%d')}."
+            "Käytä vastauksessa sanoja numeroiden sijaan, esimerkiksi 'kolme' sen sijaan, että kirjoittaisit '3'."
+            "Ilmaise päivämäärät siis sanallisesti eli esimerkiksi 'kolmas tammikuuta kaksituhatta kaksikymmentäkolme."
         )
 
         completion = self.client.chat.completions.create(
