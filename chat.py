@@ -1,11 +1,13 @@
 from copy import copy
+from datetime import datetime
 import json
-from nextcord import Message, TextChannel, DMChannel
-from typing import Dict, List
+from nextcord import Member, Message, TextChannel, DMChannel, User
+from typing import List
 import logging
 
 from openai import OpenAI
 from openai.types.chat.chat_completion_message_param import ChatCompletionMessageParam
+
 
 initial_messages = [
     {
@@ -278,6 +280,41 @@ class MeidobotChatClient:
         response = completion.choices[0].message
 
         if response.content is None or response.content == "None":
+            return None
+
+        return response.content
+
+    async def fun_fact(self, message: Message) -> str | None:
+        """
+        Get a fun fact.
+
+        Args:
+            requester (User | Member): The user requesting the fun fact.
+
+        Returns:
+            str: The fun fact.
+        """
+
+        requester = message.author
+        logger.info("Requesting fun fact for user: %s", requester)
+
+        prompt_message = (
+            f"Käyttäjä {requester.display_name} on pyytänyt sinua kertomaan hauskan faktan. Kerro hauska fakta, joka liittyy tähän päivämäärään historiassa. "
+            f"Nykyinen päivämäärä on {datetime.now().strftime('%Y-%m-%d')}."
+        )
+
+        completion = self.client.chat.completions.create(
+            model=MeidobotChatClient.model,
+            messages=initial_messages + [{"role": "user", "content": prompt_message}],
+            timeout=120,
+            temperature=1.0,
+        )
+
+        logger.info("Response from OpenAI API: %s", completion)
+
+        response = completion.choices[0].message
+
+        if response.content is None:
             return None
 
         return response.content

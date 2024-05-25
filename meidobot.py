@@ -4,8 +4,12 @@ import os
 import re
 
 import nextcord
+from nextcord.ext import commands
 
 from chat import MeidobotChatClient
+from voice import VoiceClient
+
+from io import BytesIO
 
 discord_token = os.environ.get("DISCORD_TOKEN")
 logger = logging.getLogger("Meidobot")
@@ -16,11 +20,90 @@ logging.basicConfig(level=logging.INFO)
 trigger_words = ["meidobot", "meido", "bot", "botti"]
 
 
-class MeidobotClient(nextcord.Client):
+class MeidoCommands(commands.Cog):
+
+    def __init__(self, voice_client: VoiceClient, meidobot: MeidobotChatClient):
+        self._voice_client = voice_client
+        self._meidobot = meidobot
+
+    @commands.command(name="hello")
+    async def hello(
+        self,
+        ctx: commands.Context,
+        *,
+        member: nextcord.Member | nextcord.User | None = None
+    ):
+        member = member or ctx.author
+
+        # Find the voice channel the member is in
+        if isinstance(member, nextcord.User):
+            await ctx.send("Not member")
+            return
+
+        if member.voice is None or member.voice.channel is None:
+            await ctx.send("User is not in a voice channel")
+            return
+
+        voice_channel = member.voice.channel
+
+        # Connect to the voice channel
+        connection = await voice_channel.connect()
+        await asyncio.sleep(1)
+
+        playing = [True]
+
+        # Stream the text as speech
+        with self._voice_client.speech_file(
+            "Hei! Olen Meidobot. Sinun ystäväsi ja palvelijasi."
+        ) as file:
+            source = await nextcord.FFmpegOpusAudio.from_probe(file)
+
+            connection.play(source, after=lambda e: playing.__setitem__(0, False))
+
+        # Disconnect from the voice channel when playing is done
+        while playing[0]:
+            await asyncio.sleep(2)
+
+        await connection.disconnect()
+
+    @commands.command(name="fact")
+    async def fact(self, ctx: commands.Context):
+
+        fact = await self._meidobot.fun_fact(ctx.message)
+        if fact is None:
+            return
+
+        # If the user that sent the message is in a voice channel, play the fact
+        # as speech
+        if (
+            isinstance(ctx.author, nextcord.Member)
+            and ctx.author.voice is not None
+            and ctx.author.voice.channel is not None
+        ):
+            connection = await ctx.author.voice.channel.connect()
+            await asyncio.sleep(1)
+
+            playing = [True]
+
+            with self._voice_client.speech_file(fact) as file:
+                source = await nextcord.FFmpegOpusAudio.from_probe(file)
+
+                connection.play(source, after=lambda e: playing.__setitem__(0, False))
+
+            while playing[0]:
+                await asyncio.sleep(2)
+
+            await connection.disconnect()
+        else:
+            # Otherwise, send the fact as a message
+            await ctx.send(content=fact)
+
+
+class MeidobotClient(commands.Bot):
     """Discord client for Meidobot."""
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(command_prefix="!", *args, **kwargs)
         self._client = None
 
     def _trigger_word_in_str(self, string: str) -> bool:
@@ -42,6 +125,9 @@ class MeidobotClient(nextcord.Client):
         self._client = MeidobotChatClient(
             os.environ.get("OPENAI_API_KEY"), self.user.id
         )
+        self.add_cog(
+            MeidoCommands(VoiceClient(os.environ.get("OPENAI_API_KEY")), self._client)
+        )
 
         logger.info("Logged on as %s!", self.user)
 
@@ -60,6 +146,10 @@ class MeidobotClient(nextcord.Client):
 
         if self._client is None:
             logger.error("MeidobotChatClient not initialized")
+            return
+
+        if message.content.startswith("!"):
+            await self.process_commands(message)
             return
 
         logger.info("Message %s", message)
