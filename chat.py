@@ -1,5 +1,6 @@
 from copy import copy
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 import json
 from nextcord import Member, Message, TextChannel, DMChannel, User
 from typing import List
@@ -298,9 +299,11 @@ class MeidobotChatClient:
         requester = message.author
         logger.info("Requesting fun fact for user: %s", requester)
 
+        helsinki_timezone = ZoneInfo("Europe/Helsinki")
+
         prompt_message = (
             f"Käyttäjä {requester.display_name} on pyytänyt sinua kertomaan hauskan faktan. Kerro hauska fakta, joka liittyy tähän päivämäärään historiassa. "
-            f"Nykyinen päivämäärä on {datetime.now().strftime('%Y-%m-%d')}."
+            f"Nykyinen päivämäärä on {datetime.now(tz=helsinki_timezone).strftime('%Y-%m-%d')}."
         )
 
         completion = self.client.chat.completions.create(
