@@ -67,9 +67,14 @@ class MeidoCommands(commands.Cog):
         await connection.disconnect()
 
     @commands.command(name="fact")
-    async def fact(self, ctx: commands.Context):
+    async def fact(self, ctx: commands.Context, *args):
 
-        fact = await self._meidobot.fun_fact(ctx.message)
+        if args:
+            topic = " ".join(map(str, args))
+        else:
+            topic = None
+
+        fact = await self._meidobot.fun_fact(ctx.message, topic)
         if fact is None:
             return
 

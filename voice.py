@@ -45,7 +45,7 @@ class VoiceClient:
                     voice=self.voice,
                     response_format=self.format,
                     input=text,
-                    speed=0.9,
+                    speed=0.95,
                 )
 
                 with stream as s:

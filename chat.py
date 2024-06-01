@@ -1,5 +1,6 @@
 from copy import copy
 from datetime import datetime, timezone
+import os
 from zoneinfo import ZoneInfo
 import json
 from nextcord import Member, Message, TextChannel, DMChannel, User
@@ -285,7 +286,7 @@ class MeidobotChatClient:
 
         return response.content
 
-    async def fun_fact(self, message: Message) -> str | None:
+    async def fun_fact(self, message: Message, topic: str | None) -> str | None:
         """
         Get a fun fact.
 
@@ -301,18 +302,26 @@ class MeidobotChatClient:
 
         helsinki_timezone = ZoneInfo("Europe/Helsinki")
 
-        prompt_message = (
-            f"Käyttäjä {requester.display_name} on pyytänyt sinua kertomaan hauskan faktan. Kerro hauska fakta, joka liittyy tähän päivämäärään historiassa. "
-            f"Nykyinen päivämäärä on {datetime.now(tz=helsinki_timezone).strftime('%Y-%m-%d')}."
-            "Käytä vastauksessa sanoja numeroiden sijaan, esimerkiksi 'kolme' sen sijaan, että kirjoittaisit '3'."
-            "Ilmaise päivämäärät siis sanallisesti eli esimerkiksi 'kolmas tammikuuta kaksituhatta kaksikymmentäkolme."
+        if not topic:
+            first_instruction = f"User {requester.display_name} has requested you to tell a fun fact. Tell a fun fact that relates to today's date in history. "
+        else:
+            first_instruction = f"User {requester.display_name} has requested you to tell a fun fact about '{topic}'. "
+
+        date_instruction = f"The current date is {datetime.now(tz=helsinki_timezone).strftime('%Y-%m-%d')}. "
+
+        rest_instruction = (
+            "When expressing numbers, use words instead of numbers, for example, 'three' instead of '3'. "
+            "Express dates in words, for example, 'third of January two thousand twenty-three'."
+            "Respond in Finnish"
         )
+
+        prompt_message = first_instruction + date_instruction + rest_instruction
 
         completion = self.client.chat.completions.create(
             model=MeidobotChatClient.model,
             messages=initial_messages + [{"role": "user", "content": prompt_message}],
             timeout=120,
-            temperature=1.0,
+            temperature=0.9,
         )
 
         logger.info("Response from OpenAI API: %s", completion)
