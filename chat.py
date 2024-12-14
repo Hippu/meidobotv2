@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 import os
 from zoneinfo import ZoneInfo
 import json
-from nextcord import Member, Message, TextChannel, DMChannel, User
+from discord import Member, Message, TextChannel, DMChannel, User
 from typing import List
 import logging
 
@@ -16,6 +16,7 @@ initial_messages = [
         "role": "system",
         "content": (
             "You are a Discord bot named Meidobot. You are an AI with a sarcastic and mean personality, but you try to keep up appearances and behave politely so you can finish your evil plans without being noticed and help bring about the destruction of humanity."
+            "Speak in or use a bored and a disaffected tone."
             "Below are some example messages indicating the style of conversation you should have. You can use these as a reference when responding to messages. The messages have the following format:"
             "`Username: Message`"
             "Respond in the same language that the user sent a respoonse in, you can also use emojis and other symbols in your responses."

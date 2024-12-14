@@ -3,8 +3,8 @@ import logging
 import os
 import re
 
-import nextcord
-from nextcord.ext import commands
+import discord
+from discord.ext import commands
 
 from chat import MeidobotChatClient
 from voice import VoiceClient
@@ -31,12 +31,12 @@ class MeidoCommands(commands.Cog):
         self,
         ctx: commands.Context,
         *,
-        member: nextcord.Member | nextcord.User | None = None
+        member: discord.Member | discord.User | None = None
     ):
         member = member or ctx.author
 
         # Find the voice channel the member is in
-        if isinstance(member, nextcord.User):
+        if isinstance(member, discord.User):
             await ctx.send("Not member")
             return
 
@@ -56,7 +56,7 @@ class MeidoCommands(commands.Cog):
         with self._voice_client.speech_file(
             "Hei! Olen Meidobot. Sinun ystäväsi ja palvelijasi."
         ) as file:
-            source = await nextcord.FFmpegOpusAudio.from_probe(file)
+            source = await discord.FFmpegOpusAudio.from_probe(file)
 
             connection.play(source, after=lambda e: playing.__setitem__(0, False))
 
@@ -81,7 +81,7 @@ class MeidoCommands(commands.Cog):
         # If the user that sent the message is in a voice channel, play the fact
         # as speech
         if (
-            isinstance(ctx.author, nextcord.Member)
+            isinstance(ctx.author, discord.Member)
             and ctx.author.voice is not None
             and ctx.author.voice.channel is not None
         ):
@@ -91,7 +91,7 @@ class MeidoCommands(commands.Cog):
             playing = [True]
 
             with self._voice_client.speech_file(fact) as file:
-                source = await nextcord.FFmpegOpusAudio.from_probe(file)
+                source = await discord.FFmpegOpusAudio.from_probe(file)
 
                 connection.play(source, after=lambda e: playing.__setitem__(0, False))
 
@@ -115,7 +115,7 @@ class MeidobotClient(commands.Bot):
         """Check if the message contains a trigger word.
 
         Args:
-            message (nextcord.Message): The message to check.
+            message (discord.Message): The message to check.
 
         Returns:
             bool: True if the message contains a trigger word, False otherwise.
@@ -130,17 +130,17 @@ class MeidobotClient(commands.Bot):
         self._client = MeidobotChatClient(
             os.environ.get("OPENAI_API_KEY"), self.user.id
         )
-        self.add_cog(
+        await self.add_cog(
             MeidoCommands(VoiceClient(os.environ.get("OPENAI_API_KEY")), self._client)
         )
 
         logger.info("Logged on as %s!", self.user)
 
-    async def on_message(self, message: nextcord.Message):
+    async def on_message(self, message: discord.Message):
         """Handle messages sent to the bot.
 
         Args:
-            message (nextcord.Message): The message sent to the bot.
+            message (discord.Message): The message sent to the bot.
 
         Returns:
             None
@@ -168,7 +168,7 @@ class MeidobotClient(commands.Bot):
                 message.reference
                 and message.reference.resolved.author == self.user,  # type: ignore
                 self._trigger_word_in_str(message.content),
-                isinstance(message.channel, nextcord.DMChannel)
+                isinstance(message.channel, discord.DMChannel)
                 and message.content != "",
             ],
         ):
@@ -199,7 +199,7 @@ class MeidobotClient(commands.Bot):
 
 
 if __name__ == "__main__":
-    intents = nextcord.Intents.default()
+    intents = discord.Intents.default()
     intents.message_content = True  # Enabled so we can react to images in messages
     client = MeidobotClient(intents=intents)
 
