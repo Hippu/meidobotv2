@@ -2,14 +2,14 @@ import asyncio
 import logging
 import os
 import re
+from io import BytesIO
 
 import discord
-from discord.ext import commands
+from discord.ext import commands, voice_recv
 
 from chat import MeidobotChatClient
+from realtime import realtime_fact
 from voice import VoiceClient
-
-from io import BytesIO
 
 discord_token = os.environ.get("DISCORD_TOKEN")
 logger = logging.getLogger("Meidobot")
@@ -102,6 +102,26 @@ class MeidoCommands(commands.Cog):
         else:
             # Otherwise, send the fact as a message
             await ctx.send(content=fact)
+
+    @commands.command(name="fact2")
+    async def rt_fact(self, ctx: commands.Context):
+        if (
+            isinstance(ctx.author, discord.Member)
+            and ctx.author.voice is not None
+            and ctx.author.voice.channel is not None
+        ):
+            connection = await ctx.author.voice.channel.connect(
+                cls=voice_recv.VoiceRecvClient
+            )
+            await asyncio.sleep(1)
+
+            await realtime_fact(connection)
+
+            await asyncio.sleep(2)
+
+            await connection.disconnect()
+        else:
+            await ctx.send("You need to be in a voice channel to use this command.")
 
 
 class MeidobotClient(commands.Bot):
